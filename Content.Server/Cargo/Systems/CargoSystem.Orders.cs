@@ -214,7 +214,17 @@ namespace Content.Server.Cargo.Systems
                 return;
             }
 
-            var ev = new FulfillCargoOrderEvent((station.Value, stationData), order, (uid, component));
+            var emagged = _emag.CheckFlag(uid, EmagType.Interaction);
+
+            if (!emagged)
+            {
+                order.SetApproverData(_identity.GetIdentityShortInfo(player, uid));
+            }
+
+            order.ApprovingConsole = GetNetEntity(uid);
+            order.Approved = true;
+
+            var ev = new FulfillCargoOrderEvent((station.Value, stationData), order);
             RaiseLocalEvent(ref ev);
             ev.FulfillmentEntity ??= station.Value;
 
@@ -226,11 +236,13 @@ namespace Content.Server.Cargo.Systems
                 {
                     ConsolePopup(args.Actor, Loc.GetString("cargo-console-unfulfilled"));
                     PlayDenySound(uid, component);
+                    order.Approver = null;
+                    order.ApprovingConsole = null;
+                    order.Approved = false;
                     return;
                 }
             }
 
-            order.Approved = true;
             _audio.PlayPvs(ApproveSound, uid);
 
             if (!_emag.CheckFlag(uid, EmagType.Interaction))
